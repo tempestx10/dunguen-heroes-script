@@ -1,0 +1,282 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+	Name = "Dungeon Heroes UI",
+	LoadingTitle = "Loading Dungeon UI",
+	LoadingSubtitle = "by TempestX",
+	ShowText = "Tempest X", -- for mobile users to unhide rayfield, change if you'd like
+	Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   ToggleUIKeybind = Enum.KeyCode.LeftControl, -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "Big Hub"
+   },
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Hello"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
+
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MyCustomGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = game:GetService("CoreGui")
+local button = Instance.new("ImageButton")
+button.Parent = screenGui
+button.Size = UDim2.new(0, 70, 0, 70)
+button.Position = UDim2.new(0, 100, 0.5, -350)
+button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+button.Image = "rbxassetid://7058352154"
+button.Active = true
+button.Draggable = true
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = button
+button.MouseButton1Click:Connect(function()
+	getgenv().keytoclick = Enum.KeyCode.LeftControl
+game:GetService("VirtualInputManager"):SendKeyEvent(true, keytoclick, false, game)
+end)
+
+
+-- Tabs
+local MainTab = Window:CreateTab("Main", 4483362458)
+local DungeonTab = Window:CreateTab("Dungeon", 4483362458)
+
+-- Variables
+local autofarmEnabled = false
+local killauraEnabled = false
+local autostartEnabled = false
+local selectedDungeon = "ForestDungeon"
+local selectedMode = 1
+local selectedPlayer = 1
+
+-- Kill Aura
+MainTab:CreateToggle({
+    Name = "Kill Aura",
+    CurrentValue = false,
+    Callback = function(Value)
+        killauraEnabled = Value
+    end
+})
+
+task.spawn(function()
+    local rs = game:GetService("ReplicatedStorage")
+    while true do
+        task.wait(0.25)
+        if killauraEnabled then
+            local mobs = workspace:FindFirstChild("Mobs")
+            local mobList = mobs and mobs:GetChildren() or {}
+            rs.Systems.Combat.PlayerAttack:FireServer(mobList)
+        end
+    end
+end)
+
+-- Auto Start Dungeon
+MainTab:CreateToggle({
+    Name = "Auto Start Dungeon",
+    CurrentValue = false,
+    Callback = function(Value)
+        autostartEnabled = Value
+        if Value then
+            game:GetService("ReplicatedStorage").Systems.Dungeons.TriggerStartDungeon:FireServer()
+        end
+    end
+})
+
+-- Auto Farm (AlignPosition)
+MainTab:CreateToggle({
+    Name = "Auto Farm (Fly over mob)",
+    CurrentValue = false,
+    Callback = function(Value)
+        autofarmEnabled = Value
+    end
+})
+
+-- AlignPosition function
+local function attachAlignPosition(root)
+    local attachment = Instance.new("Attachment", root)
+
+    local align = Instance.new("AlignPosition")
+    align.Attachment0 = attachment
+    align.Position = root.Position
+    align.Mode = Enum.PositionAlignmentMode.OneAttachment
+    align.RigidityEnabled = true
+    align.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    align.Responsiveness = 300
+    align.Parent = root
+    return align
+end
+local function noclip(character)
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+end
+
+task.spawn(function()
+    local player = game.Players.LocalPlayer
+    local align = nil
+
+    while true do
+        task.wait(0.2)
+
+        if autofarmEnabled then
+            local char = player.Character or player.CharacterAdded:Wait()
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then
+                task.wait(0.2)
+                continue
+            end
+            noclip(char)  -- เรียกใช้ noclip ทุกครั้งใน loop
+            if not align or align.Parent ~= root then
+                if align then align:Destroy() end
+                align = attachAlignPosition(root)
+            end
+
+            local mobs = workspace:FindFirstChild("Mobs")
+				if not mobs then
+					task.wait(0.2)
+					continue
+				end
+
+				local closest, dist = nil, math.huge
+				for _, mob in pairs(mobs:GetChildren()) do
+					-- ตรวจสอบว่า mob ไม่มี PetHealthbar
+					if not mob:FindFirstChild("PetHealthbar") then
+						local hrp = mob:FindFirstChild("HumanoidRootPart")
+						if hrp then
+							local d = (root.Position - hrp.Position).Magnitude
+							if d < dist then
+								closest, dist = hrp, d
+							end
+						end
+					end
+				end
+            if closest then
+				align.Position = closest.Position + Vector3.new(0, 40, 0)
+			else
+				align.Position = root.Position + Vector3.new(0, 40, 0)
+			end
+
+        elseif align then
+            align:Destroy()
+            align = nil
+        end
+    end
+end)
+
+
+
+local autoGoAgainEnabled = false
+local Autoagian = MainTab:CreateToggle({
+   Name = "Auto play again",
+   CurrentValue = false,
+   Flag = "Toggle1",
+   Callback = function(Value)
+       autoGoAgainEnabled = Value
+   end,
+})
+
+task.spawn(function()
+    local player = game.Players.LocalPlayer
+    while true do
+        task.wait(1)
+        if autoGoAgainEnabled then
+            game:GetService("ReplicatedStorage").Systems.Dungeons.SetExitChoice:FireServer("GoAgain")
+        end
+    end
+end)
+
+
+local DungeonMap = {
+	["ForestDungeon 1+"] = "ForestDungeon",
+	["MountainDungeon 15+"] = "MountainDungeon",
+	["CoveDungeon 30+"] = "CoveDungeon",
+	["CastleDungeon 45+"] = "CastleDungeon",
+	["JungleDungeon 60+"] = "JungleDungeon",
+	["AstralDungeon 75+"] = "AstralDungeon",
+	["DesertDungeon 90"] = "DesertDungeon",
+	["CaveDungeon 105+"] = "CaveDungeon",
+	["MushroomDungeon 120+"] = "MushroomDungeon",
+	["GoldDungeon 135+"] = "GoldDungeon"
+}
+local selectedDungeonValue = "ForestDungeon"
+local selectedModeValue = 4
+local selectedPlayerValue = 1
+local selectedDungeon = DungeonTab:CreateDropdown({
+    Name = "Select Dungeon",
+    Options = {
+        "ForestDungeon 1+", "MountainDungeon 15+", "CoveDungeon 30+",
+        "CastleDungeon 45+", "JungleDungeon 60+", "AstralDungeon 75+",
+        "DesertDungeon 90+", "CaveDungeon 105+", "MushroomDungeon 120+",
+		"GoldDungeon 135+" ---event "FireCultDungeon",
+    },
+    CurrentOption = {"ForestDungeon"}, -- << ต้องใช้เป็น table ด้วย
+    MultipleOptions = false,
+    Flag = "selectedDungeondropdown1",
+    Callback = function(Options)
+        selectedDungeonValue = DungeonMap[Options[1]]
+        print("เลือกดันเจียน:", selectedDungeonValue)
+    end
+})
+local selectedMode = DungeonTab:CreateSlider({
+   Name = "Select Mode",
+   Range = {1, 4},
+   Increment = 1,
+   Suffix = "Difficulty",
+   CurrentValue = 4,
+   Flag = "selectedModeslide",
+   Callback = function(Value)
+	selectedModeValue = Value
+   end,
+})
+
+local selectedPlayer = DungeonTab:CreateSlider({
+   Name = "Select Mode",
+   Range = {1, 5},
+   Increment = 1,
+   Suffix = "Cout player",
+   CurrentValue = 1,
+   Flag = "selectedPlayerslide",
+   Callback = function(Value)
+	selectedPlayerValue = Value
+   end,
+})
+DungeonTab:CreateButton({
+    Name = "Start Dungeon",
+    Callback = function()
+
+        print("Players:", selectedPlayerValue, type(selectedPlayerValue))
+        local args = {
+            selectedDungeonValue,
+            selectedModeValue,
+            selectedPlayerValue,
+            false,
+            false
+        }
+        local rs = game:GetService("ReplicatedStorage")
+        rs:WaitForChild("Systems"):WaitForChild("Parties"):WaitForChild("SetSettings"):FireServer(unpack(args))
+        task.wait(0.5)
+        rs:WaitForChild("Systems"):WaitForChild("Dungeons"):WaitForChild("TriggerStartDungeon"):FireServer()
+    end
+})
+
