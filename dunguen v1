@@ -2,9 +2,9 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
 	Name = "Dungeon Heroes UI",
-	LoadingTitle = "Loading Dungeon UI",
+	LoadingTitle = "Loading Dungeon Heroes UI",
 	LoadingSubtitle = "by TempestX",
-	ShowText = "Tempest X", -- for mobile users to unhide rayfield, change if you'd like
+	ShowText = "toggle ui", -- for mobile users to unhide rayfield, change if you'd like
 	Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
 
    ToggleUIKeybind = Enum.KeyCode.LeftControl, -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
@@ -14,12 +14,12 @@ local Window = Rayfield:CreateWindow({
 
    ConfigurationSaving = {
       Enabled = true,
-      FolderName = nil, -- Create a custom folder for your hub/game
-      FileName = "Big Hub"
+      FolderName = "TempestXScript", -- Create a custom folder for your hub/game
+      FileName = "dunguenConfig"
    },
    Discord = {
-      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
-      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      Enabled = true, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "vgzd3j62vT", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
       RememberJoins = true -- Set this to false to make them join the discord every time they load it up
    },
    KeySystem = false, -- Set this to true to use our key system
@@ -41,8 +41,8 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = game:GetService("CoreGui")
 local button = Instance.new("ImageButton")
 button.Parent = screenGui
-button.Size = UDim2.new(0, 70, 0, 70)
-button.Position = UDim2.new(0, 50, 0, 100)
+button.Size = UDim2.new(0, 50, 0, 50)
+button.Position = UDim2.new(0, 50, 0.5, 100)
 button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 button.Image = "rbxassetid://7058352154"
 button.Active = true
@@ -57,21 +57,32 @@ end)
 
 
 -- Tabs
-local MainTab = Window:CreateTab("Main", 4483362458)
+local MainTab = Window:CreateTab("Main", "brain")
 local DungeonTab = Window:CreateTab("Dungeon", 4483362458)
+local Event = Window:CreateTab("Event", "calendar")
 
--- Variables
-local autofarmEnabled = false
-local killauraEnabled = false
-local autostartEnabled = false
+
+local autofarmEnabled
+local killauraEnabled
+local autostartEnabled
+
+task.wait(1)
+
+killauraEnabled = Rayfield.Flags["AutokillAura"] and Rayfield.Flags["AutokillAura"].CurrentValue or false
+autostartEnabled = Rayfield.Flags["AutoStart"] and Rayfield.Flags["AutoStart"].CurrentValue or false
+autofarmEnabled = Rayfield.Flags["AutoFarmFLy"] and Rayfield.Flags["AutoFarmFLy"].CurrentValue or false
+
+
+
 local selectedDungeon = "ForestDungeon"
 local selectedMode = 1
 local selectedPlayer = 1
-
+local mainfunc = MainTab:CreateSection("Main Function")
 -- Kill Aura
 MainTab:CreateToggle({
     Name = "Kill Aura",
     CurrentValue = false,
+	Flag = "AutokillAura",
     Callback = function(Value)
         killauraEnabled = Value
     end
@@ -93,6 +104,7 @@ end)
 MainTab:CreateToggle({
     Name = "Auto Start Dungeon",
     CurrentValue = false,
+	Flag = "AutoStart",
     Callback = function(Value)
         autostartEnabled = Value
         if Value then
@@ -105,6 +117,7 @@ MainTab:CreateToggle({
 MainTab:CreateToggle({
     Name = "Auto Farm (Fly over mob)",
     CurrentValue = false,
+	Flag = "AutoFarmFLy",
     Callback = function(Value)
         autofarmEnabled = Value
     end
@@ -113,7 +126,6 @@ MainTab:CreateToggle({
 -- AlignPosition function
 local function attachAlignPosition(root)
     local attachment = Instance.new("Attachment", root)
-
     local align = Instance.new("AlignPosition")
     align.Attachment0 = attachment
     align.Position = root.Position
@@ -171,12 +183,13 @@ task.spawn(function()
 						end
 					end
 				end
-            if closest then
-				align.Position = closest.Position + Vector3.new(0, 40, 0)
-			else
-				align.Position = root.Position + Vector3.new(0, 40, 0)
+            local lastPosition = nil
+			if closest then
+				lastPosition = closest.Position + Vector3.new(0, 40, 0)
 			end
-
+			if lastPosition then
+				align.Position = lastPosition
+			end
         elseif align then
             align:Destroy()
             align = nil
