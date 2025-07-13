@@ -66,16 +66,84 @@ local selectedDungeon = "ForestDungeon"
 local selectedMode = 1
 local selectedPlayer = 1
 local mainfunc = MainTab:CreateSection("Main Function")
+
 -- Kill Aura
+local Killauratoggle = MainTab:CreateToggle({
+   Name = "Kill Aura",
+   CurrentValue = false,
+   Flag = "AutokillAura",
+   Callback = function(Value)
+   		killauraEnabled = Value
+	end
+})
 MainTab:CreateToggle({
-    Name = "Kill Aura",
+    Name = "Auto Start Dungeon",
     CurrentValue = false,
-	Flag = "AutokillAura",
+	Flag = "AutoStart",
     Callback = function(Value)
-        killauraEnabled = Value
+        autostartEnabled = Value
     end
 })
 
+local flysety = MainTab:CreateSlider({
+   Name = "Fly Height",
+   Range = {0, 100},
+   Increment = 10,
+   Suffix = "(0-100)",
+   CurrentValue = 40,
+   Flag = "flylvsetconfig", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Callback = function(Value)
+	flylv = Value
+   end,
+})
+
+-- Auto Farm (AlignPosition)
+MainTab:CreateToggle({
+    Name = "Auto Farm (Fly over mob)",
+    CurrentValue = false,
+	Flag = "AutoFarmFLy",
+    Callback = function(Value)
+        autofarmEnabled = Value
+    end
+})
+local Autoagian = MainTab:CreateToggle({
+   Name = "Auto play again",
+   CurrentValue = false,
+   Flag = "Autoplayaian",
+   Callback = function(Value)
+       autoGoAgainEnabled = Value
+   end,
+})
+task.delay(1, function()
+	Rayfield:LoadConfiguration()
+    if Rayfield.Flags["AutoFarmFLy"] then
+        autofarmEnabled = Rayfield.Flags["AutoFarmFLy"].CurrentValue
+    end
+    if Rayfield.Flags["AutokillAura"] then
+        killauraEnabled = Rayfield.Flags["AutokillAura"].CurrentValue
+    end
+    if Rayfield.Flags["AutoStart"] then
+        autostartEnabled = Rayfield.Flags["AutoStart"].CurrentValue
+    end
+    if Rayfield.Flags["Autoplayaian"] then
+        autoGoAgainEnabled = Rayfield.Flags["Autoplayaian"].CurrentValue
+    end
+    if Rayfield.Flags["flylvsetconfig"] then
+        flylv = Rayfield.Flags["flylvsetconfig"].CurrentValue
+    end
+end)
+task.delay(1, function()
+    print("=== Rayfield Config Loaded ===")
+	print("AutokillAura:", Rayfield.Flags["AutokillAura"] and Rayfield.Flags["AutokillAura"].CurrentValue)
+	print("AutoStart:", Rayfield.Flags["AutoStart"] and Rayfield.Flags["AutoStart"].CurrentValue)
+	print("flylvsetconfig:", Rayfield.Flags["flylvsetconfig"] and Rayfield.Flags["flylvsetconfig"].CurrentValue)
+    print("AutoFarmFLy:", Rayfield.Flags["AutoFarmFLy"] and Rayfield.Flags["AutoFarmFLy"].CurrentValue)
+	print("Autoplayaian:", Rayfield.Flags["Autoplayaian"] and Rayfield.Flags["Autoplayaian"].CurrentValue)
+end)
+
+
+
+---killaura
 task.spawn(function()
     local rs = game:GetService("ReplicatedStorage")
     while true do
@@ -87,16 +155,7 @@ task.spawn(function()
         end
     end
 end)
-
--- Auto Start Dungeon
-MainTab:CreateToggle({
-    Name = "Auto Start Dungeon",
-    CurrentValue = true,
-	Flag = "AutoStart",
-    Callback = function(Value)
-        autostartEnabled = Value
-    end
-})
+------start
 task.spawn(function()
     while true do
         task.wait(.25)
@@ -106,16 +165,7 @@ task.spawn(function()
     end
 end)
 
--- Auto Farm (AlignPosition)
-MainTab:CreateToggle({
-    Name = "Auto Farm (Fly over mob)",
-    CurrentValue = false,
-	Flag = "AutoFarmFLy",
-    Callback = function(Value)
-        autofarmEnabled = Value
-    end
-})
-
+--------autofarm
 local function attachBodyMover(root)
 	local bodyPos = Instance.new("BodyPosition")
 	bodyPos.MaxForce = Vector3.new(1e9, 1e9, 1e9)
@@ -133,7 +183,7 @@ local function attachBodyMover(root)
 
 	return bodyPos, bodyGyro
 end
-
+--noclip
 local function noclip(character)
 	for _, part in pairs(character:GetDescendants()) do
 		if part:IsA("BasePart") then
@@ -143,7 +193,6 @@ local function noclip(character)
 end
 
 local lastPosition = nil
-
 task.spawn(function()
 	local player = game.Players.LocalPlayer
 	local bodyPos = nil
@@ -181,7 +230,7 @@ task.spawn(function()
 			end
 
 			if closest then
-				lastPosition = closest.Position + Vector3.new(0, 40, 0)
+				lastPosition = closest.Position + Vector3.new(0, flylv, 0)
 			end
 
 			if lastPosition then
@@ -194,20 +243,7 @@ task.spawn(function()
 		end
 	end
 end)
-
-
-
-
-local autoGoAgainEnabled = false
-local Autoagian = MainTab:CreateToggle({
-   Name = "Auto play again",
-   CurrentValue = false,
-   Flag = "Toggle1",
-   Callback = function(Value)
-       autoGoAgainEnabled = Value
-   end,
-})
-
+----agian
 task.spawn(function()
     local player = game.Players.LocalPlayer
     while true do
@@ -226,7 +262,7 @@ local DungeonMap = {
 	["CastleDungeon 45+"] = "CastleDungeon",
 	["JungleDungeon 60+"] = "JungleDungeon",
 	["AstralDungeon 75+"] = "AstralDungeon",
-	["DesertDungeon 90"] = "DesertDungeon",
+	["DesertDungeon 90+"] = "DesertDungeon",
 	["CaveDungeon 105+"] = "CaveDungeon",
 	["MushroomDungeon 120+"] = "MushroomDungeon",
 	["GoldDungeon 135+"] = "GoldDungeon"
