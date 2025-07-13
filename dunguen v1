@@ -2,7 +2,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
 	Name = "Dungeon Heroes UI",
-	LoadingTitle = "Loading Dungeon Heroes UI",
+	LoadingTitle = "Loading Dungeon UI",
 	LoadingSubtitle = "by TempestX",
 	ShowText = "toggle ui", -- for mobile users to unhide rayfield, change if you'd like
 	Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
@@ -41,8 +41,8 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = game:GetService("CoreGui")
 local button = Instance.new("ImageButton")
 button.Parent = screenGui
-button.Size = UDim2.new(0, 50, 0, 50)
-button.Position = UDim2.new(0, 50, 0.5, 100)
+button.Size = UDim2.new(0, 70, 0, 70)
+button.Position = UDim2.new(0, -100, .5, 100)
 button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 button.Image = "rbxassetid://7058352154"
 button.Active = true
@@ -60,18 +60,6 @@ end)
 local MainTab = Window:CreateTab("Main", "brain")
 local DungeonTab = Window:CreateTab("Dungeon", 4483362458)
 local Event = Window:CreateTab("Event", "calendar")
-
-
-local autofarmEnabled
-local killauraEnabled
-local autostartEnabled
-
-task.wait(1)
-
-killauraEnabled = Rayfield.Flags["AutokillAura"] and Rayfield.Flags["AutokillAura"].CurrentValue or false
-autostartEnabled = Rayfield.Flags["AutoStart"] and Rayfield.Flags["AutoStart"].CurrentValue or false
-autofarmEnabled = Rayfield.Flags["AutoFarmFLy"] and Rayfield.Flags["AutoFarmFLy"].CurrentValue or false
-
 
 
 local selectedDungeon = "ForestDungeon"
@@ -103,15 +91,20 @@ end)
 -- Auto Start Dungeon
 MainTab:CreateToggle({
     Name = "Auto Start Dungeon",
-    CurrentValue = false,
+    CurrentValue = true,
 	Flag = "AutoStart",
     Callback = function(Value)
         autostartEnabled = Value
-        if Value then
+    end
+})
+task.spawn(function()
+    while true do
+        task.wait(.25)
+        if autostartEnabled then
             game:GetService("ReplicatedStorage").Systems.Dungeons.TriggerStartDungeon:FireServer()
         end
     end
-})
+end)
 
 -- Auto Farm (AlignPosition)
 MainTab:CreateToggle({
@@ -123,79 +116,85 @@ MainTab:CreateToggle({
     end
 })
 
--- AlignPosition function
-local function attachAlignPosition(root)
-    local attachment = Instance.new("Attachment", root)
-    local align = Instance.new("AlignPosition")
-    align.Attachment0 = attachment
-    align.Position = root.Position
-    align.Mode = Enum.PositionAlignmentMode.OneAttachment
-    align.RigidityEnabled = true
-    align.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    align.Responsiveness = 300
-    align.Parent = root
-    return align
+local function attachBodyMover(root)
+	local bodyPos = Instance.new("BodyPosition")
+	bodyPos.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+	bodyPos.P = 6000
+	bodyPos.D = 1000
+	bodyPos.Position = root.Position
+	bodyPos.Parent = root
+
+	local bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+	bodyGyro.P = 3000
+	bodyGyro.D = 500
+	bodyGyro.CFrame = root.CFrame
+	bodyGyro.Parent = root
+
+	return bodyPos, bodyGyro
 end
+
 local function noclip(character)
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
-    end
+	for _, part in pairs(character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CanCollide = false
+		end
+	end
 end
+
+local lastPosition = nil
 
 task.spawn(function()
-    local player = game.Players.LocalPlayer
-    local align = nil
+	local player = game.Players.LocalPlayer
+	local bodyPos = nil
+	local bodyGyro = nil
 
-    while true do
-        task.wait(0.2)
+	while true do
+		task.wait(0.1)
+		if autofarmEnabled then
+			local char = player.Character or player.CharacterAdded:Wait()
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if not root then continue end
 
-        if autofarmEnabled then
-            local char = player.Character or player.CharacterAdded:Wait()
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then
-                task.wait(0.2)
-                continue
-            end
-            noclip(char)  -- เรียกใช้ noclip ทุกครั้งใน loop
-            if not align or align.Parent ~= root then
-                if align then align:Destroy() end
-                align = attachAlignPosition(root)
-            end
+			noclip(char)
 
-            local mobs = workspace:FindFirstChild("Mobs")
-				if not mobs then
-					task.wait(0.2)
-					continue
-				end
+			if not bodyPos or not bodyGyro or bodyPos.Parent ~= root then
+				if bodyPos then bodyPos:Destroy() end
+				if bodyGyro then bodyGyro:Destroy() end
+				bodyPos, bodyGyro = attachBodyMover(root)
+			end
 
-				local closest, dist = nil, math.huge
-				for _, mob in pairs(mobs:GetChildren()) do
-					-- ตรวจสอบว่า mob ไม่มี PetHealthbar
-					if not mob:FindFirstChild("PetHealthbar") then
-						local hrp = mob:FindFirstChild("HumanoidRootPart")
-						if hrp then
-							local d = (root.Position - hrp.Position).Magnitude
-							if d < dist then
-								closest, dist = hrp, d
-							end
+			local mobs = workspace:FindFirstChild("Mobs")
+			if not mobs then continue end
+
+			local closest, dist = nil, math.huge
+			for _, mob in pairs(mobs:GetChildren()) do
+				if not mob:FindFirstChild("PetHealthbar") then
+					local hrp = mob:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						local d = (root.Position - hrp.Position).Magnitude
+						if d < dist then
+							closest, dist = hrp, d
 						end
 					end
 				end
-            local lastPosition = nil
+			end
+
 			if closest then
 				lastPosition = closest.Position + Vector3.new(0, 40, 0)
 			end
+
 			if lastPosition then
-				align.Position = lastPosition
+				bodyPos.Position = lastPosition
+				bodyGyro.CFrame = CFrame.new(root.Position, lastPosition) -- หันหน้าไปทางมอน
 			end
-        elseif align then
-            align:Destroy()
-            align = nil
-        end
-    end
+		else
+			if bodyPos then bodyPos:Destroy() bodyPos = nil end
+			if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+		end
+	end
 end)
+
 
 
 
@@ -243,7 +242,7 @@ local selectedDungeon = DungeonTab:CreateDropdown({
         "DesertDungeon 90+", "CaveDungeon 105+", "MushroomDungeon 120+",
 		"GoldDungeon 135+" ---event "FireCultDungeon",
     },
-    CurrentOption = {"ForestDungeon"}, -- << ต้องใช้เป็น table ด้วย
+    CurrentOption = {"ForestDungeon 1+"}, -- << ต้องใช้เป็น table ด้วย
     MultipleOptions = false,
     Flag = "selectedDungeondropdown1",
     Callback = function(Options)
