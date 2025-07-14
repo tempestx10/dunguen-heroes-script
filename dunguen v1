@@ -169,7 +169,7 @@ end)
 local function attachBodyMover(root)
 	local bodyPos = Instance.new("BodyPosition")
 	bodyPos.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-	bodyPos.P = 6000
+	bodyPos.P = 5500
 	bodyPos.D = 1000
 	bodyPos.Position = root.Position
 	bodyPos.Parent = root
